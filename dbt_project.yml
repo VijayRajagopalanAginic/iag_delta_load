@@ -1,0 +1,61 @@
+
+# Name your project! Project names should contain only lowercase characters
+# and underscores. A good package name should reflect your organization's
+# name or the intended use of these models
+name: 'iag_delta_postgres_test'
+version: '1.0.0'
+config-version: 2
+
+vars:
+  is_delta_load: False
+  batch_name: "NA"
+  delta_load_batch_id: -1
+  completed_status: Completed # not used - result.status is "success" by default
+  success_status: success
+  started_status: started
+  failed_status: Failed # not used - result.status is "error" by default
+  error_status: error
+
+# This setting configures which "profile" dbt uses for this project.
+profile: 'iag_postgres_test'
+
+# These configurations specify where dbt should look for different types of files.
+# The `source-paths` config, for example, states that models in this project can be
+# found in the "models/" directory. You probably won't need to change these!
+source-paths: ["models"]
+analysis-paths: ["analysis"]
+test-paths: ["tests"]
+data-paths: ["data"]
+macro-paths: ["macros"]
+snapshot-paths: ["snapshots"]
+
+target-path: "target"  # directory which will store compiled SQL files
+clean-targets:         # directories to be removed by `dbt clean`
+  - "target"
+  - "dbt_modules"
+
+on-run-start: "{{ delta_load_master_control_start() }}"
+on-run-end: "{{ delta_load_master_control_complete() }}"
+
+dispatch:
+  - macro_namespace: dbt
+    search_order: ['iag_delta_postgres_test', 'dbt']
+
+# Configuring models
+# Full documentation: https://docs.getdbt.com/docs/configuring-models
+
+# In this example config, we tell dbt to build all models in the example/ directory
+# as tables. These settings can be overridden in the individual model files
+# using the `{{ config(...) }}` macro.
+models:
+  iag_delta_postgres_test:
+    # Config indicated by + and applies to all files under models/example/
+    orders:
+      +materialized: table
+snapshots:
+  #on-run-start: "{{ insert_delta_load_master_control('PC') }}"
+  iag_delta_postgres_test:
+    orders:
+      +tags: PC
+    test:
+      +tags: test

@@ -1,0 +1,10 @@
+
+version: 2
+
+models:
+  - name: orders_stg
+    description: "Stage model for orders"
+    columns:
+      - name: id
+        description: "The primary key for this table"
+

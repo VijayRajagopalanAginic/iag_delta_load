@@ -1,0 +1,20 @@
+
+{% macro postgres__create_table_as(temporary, relation, sql) -%}
+{{ log("JJJJJJJJJJJJJJJJJJJJJJJJJJJJ - " ~ relation, info=True) }}
+{% if 1==0 %}
+  {%- set unlogged = config.get('unlogged', default=false) -%}
+  {%- set sql_header = config.get('sql_header', none) -%}
+
+  {{ sql_header if sql_header is not none }}
+
+  create {% if temporary -%}
+    temporary
+  {%- elif unlogged -%}
+    unlogged
+  {%- endif %} table {{ relation }}
+  as (
+    {{ sql }}
+  );
+
+  {% endif %}
+{%- endmacro %}

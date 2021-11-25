@@ -1,0 +1,43 @@
+{% snapshot orders_ci %}
+
+{{
+    config(
+      target_schema='snapshots',
+      unique_key='id',
+      pre_hook=before_begin("{{ delta_load_job_control_start('orders_ci') }}"),
+      post_hook=after_commit("{{ delta_load_job_control_complete('orders_ci') }}"),
+
+      strategy='timestamp',
+      updated_at='updated_at',
+    )
+}}
+
+{% if execute %}
+
+
+{% set runSnapshot = False %}
+
+{% if var('delta_load_batch_id') != -1 %}
+  {% set hasJobRunBefore = run_query("select count(*) from delta_load_job_control where batch_seq_id = " ~ var('delta_load_batch_id') ~ " and job_table_name = 'orders_ci' and job_table_status = 'Completed' ") %}    
+  {{ log("hasJobRunBefore length - " ~ hasJobRunBefore|length, info=True) }}
+    {% if hasJobRunBefore[0][0] == 0 %}
+    {{ log("This job has not been completed before, so running again", info=True) }}
+     {% set runSnapshot = True %}
+    {% endif %}
+{% else %}
+  {{ log("snapshot id mnot passed", info=True) }}
+  {% set runSnapshot = True %}
+{% endif %}
+
+{% endif %}
+
+{% if runSnapshot == True %}
+  {{ log("running snapshot", info=True) }}
+  select * from {{ source('public', 'orders') }}
+{% endif %}
+
+
+
+
+
+{% endsnapshot %}

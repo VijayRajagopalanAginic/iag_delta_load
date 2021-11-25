@@ -1,0 +1,27 @@
+{% macro delta_load_master_control_complete() -%} 
+
+{% if execute %}
+
+{% if var('is_delta_load') and var('batch_name') != 'NA' %}
+    {# If the job status is still Started, the job has failed #}
+    {# FIX THIS - Find a way to verify whether all jobs ran successfully #}
+    {% set failed_batch_seq_id = run_query("select count(*) from delta_load_job_control where batch_seq_id = " ~ run_started_at.strftime("%s") ~ " group by batch_seq_id having count(job_table_status) = 1") %}
+    {{ log("failed jobs length - " ~ failed_batch_seq_id|length, info=True) }}
+
+    {% if failed_batch_seq_id|length == 0 %}
+        {{ log("length == 0",info=True) }}
+        {% do run_query("insert into delta_load_master_control (sequence_id, batch_name, status, started_time) values (" ~ run_started_at.strftime("%s") ~ ", '" ~ var('batch_name') ~ "', '" ~ var('completed_status') ~ "', current_timestamp)") %}
+    {% else %}
+        {{ log("failed jobs - " ~ failed_batch_seq_id[0][0], info=True) }}
+        {% set failed_job_table_name = run_query("select job_table_name from delta_load_job_control where batch_seq_id = " ~ run_started_at.strftime("%s") ~ " group by job_table_name having count(job_table_status) = 1") %}
+        {{ log("failed jobs table name - " ~ failed_job_table_name[0][0], info=True) }}
+        {% do run_query("insert into delta_load_master_control (sequence_id, batch_name, status, started_time) values (" ~ run_started_at.strftime("%s") ~ ", '" ~ var('batch_name') ~ "', '" ~ var('failed_status') ~ "', current_timestamp)") %}
+        {% do run_query("insert into delta_load_job_control (batch_seq_id, job_table_name, job_table_status, table_load_start_time) values (" ~ run_started_at.strftime("%s") ~ ", '" ~ failed_job_table_name[0][0] ~ "', '" ~ var('failed_status') ~ "', current_timestamp)") %}
+    {% endif %}
+{% else %}
+    {{ log("Not running on_run_start becuase the input parameters are incorrect", info=True) }}
+{% endif %}
+
+{% endif %}
+
+{%- endmacro %}
